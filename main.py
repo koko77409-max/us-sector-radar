@@ -137,7 +137,7 @@ all_df["Quadrant"] = all_df.apply(
 )
 all_df["Prev_Quadrant"] = all_df.groupby("Sector")["Quadrant"].shift(1)
 
-# 狀態機
+# 狀態機判定
 processed_records = []
 for sec_name, group in all_df.groupby("Sector"):
     group = group.sort_values("Date").copy()
@@ -206,57 +206,77 @@ for sec_name, group in all_df.groupby("Sector"):
 all_df = pd.concat(processed_records, ignore_index=True)
 all_df = all_df.sort_values(["Date", "Sector"]).reset_index(drop=True)
 
-# 生成圖表與表格
-recent_dates = all_df["Date"].drop_duplicates().tail(15)  # 手機端展示 15 天最佳
+# 取近 15 天數據
+recent_dates = all_df["Date"].drop_duplicates().tail(15)
 recent_df = all_df[all_df["Date"].isin(recent_dates)].copy()
 
 recent_df["Norm_Price_Return"] = recent_df.groupby("Sector")["Close"].transform(
     lambda s: (s / s.iloc[0] - 1) * 100
 )
 
-# 價格走勢圖
-fig_price = px.line(
-    recent_df,
-    x="Date",
-    y="Norm_Price_Return",
-    color="Sector",
-    markers=True,
-    title="板塊價格走勢 (% 累積漲跌)",
-    template="plotly_dark",
-)
-fig_price.update_layout(
-    height=360,
-    margin=dict(l=10, r=10, t=40, b=10),
-    legend=dict(
-        orientation="h", yanchor="bottom", y=-0.8, xanchor="center", x=0.5
-    ),
-)
-chart_price_html = fig_price.to_html(
-    full_html=False, include_plotlyjs="cdn", config={"displayModeBar": False}
-)
-
-# 資金流走勢圖
+# 資金流走勢圖優化
 fig_flow = px.line(
     recent_df,
-    x="Date",
+    x="ShortDate",
     y="NetFlow_10D",
     color="Sector",
     markers=True,
-    title="10 日資金累積淨流向 ($B)",
     template="plotly_dark",
+)
+fig_flow.add_hline(
+    y=0, line_dash="dash", line_color="#78909C", opacity=0.7
 )
 fig_flow.update_layout(
     height=360,
-    margin=dict(l=10, r=10, t=40, b=10),
+    margin=dict(l=10, r=10, t=20, b=80),
     legend=dict(
-        orientation="h", yanchor="bottom", y=-0.8, xanchor="center", x=0.5
+        orientation="h",
+        yanchor="top",
+        y=-0.25,
+        xanchor="center",
+        x=0.5,
+        font=dict(size=10),
+        title="",
     ),
+    xaxis=dict(title="", tickfont=dict(size=10)),
+    yaxis=dict(title="$B 淨資金", tickfont=dict(size=10)),
 )
 chart_flow_html = fig_flow.to_html(
     full_html=False, include_plotlyjs=False, config={"displayModeBar": False}
 )
 
-# 矩陣表
+# 價格走勢圖優化
+fig_price = px.line(
+    recent_df,
+    x="ShortDate",
+    y="Norm_Price_Return",
+    color="Sector",
+    markers=True,
+    template="plotly_dark",
+)
+fig_price.add_hline(
+    y=0, line_dash="dash", line_color="#78909C", opacity=0.7
+)
+fig_price.update_layout(
+    height=360,
+    margin=dict(l=10, r=10, t=20, b=80),
+    legend=dict(
+        orientation="h",
+        yanchor="top",
+        y=-0.25,
+        xanchor="center",
+        x=0.5,
+        font=dict(size=10),
+        title="",
+    ),
+    xaxis=dict(title="", tickfont=dict(size=10)),
+    yaxis=dict(title="% 累積漲跌", tickfont=dict(size=10)),
+)
+chart_price_html = fig_price.to_html(
+    full_html=False, include_plotlyjs=False, config={"displayModeBar": False}
+)
+
+# 矩陣表生成
 matrix_dates = recent_df["Date"].drop_duplicates().tolist()
 matrix_short_dates = recent_df["ShortDate"].drop_duplicates().tolist()
 matrix_header = "".join([f"<th>{d}</th>" for d in matrix_short_dates])
@@ -354,6 +374,8 @@ full_html = f"""<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>美股資金輪動雷達</title>
+    <!-- 預載入 Plotly 庫，確保所有圖表正常顯示 -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
     <style>
         body {{
             background-color: #121212;
