@@ -214,7 +214,7 @@ recent_df["Norm_Price_Return"] = recent_df.groupby("Sector")["Close"].transform(
     lambda s: (s / s.iloc[0] - 1) * 100
 )
 
-# 資金流走勢圖優化
+# 1. 資金流走勢圖（加入完整訊號與數值 Hover）
 fig_flow = px.line(
     recent_df,
     x="ShortDate",
@@ -222,6 +222,19 @@ fig_flow = px.line(
     color="Sector",
     markers=True,
     template="plotly_dark",
+    hover_data={
+        "ShortDate": True,
+        "NetFlow_10D": ":.2f",
+        "Acceleration": ":.2f",
+        "Signal": True,
+        "Sector": False,
+    },
+    labels={
+        "NetFlow_10D": "10日淨資金($B)",
+        "Acceleration": "動能加速度",
+        "Signal": "訊號",
+        "ShortDate": "日期",
+    },
 )
 fig_flow.add_hline(
     y=0, line_dash="dash", line_color="#78909C", opacity=0.7
@@ -245,7 +258,7 @@ chart_flow_html = fig_flow.to_html(
     full_html=False, include_plotlyjs=False, config={"displayModeBar": False}
 )
 
-# 價格走勢圖優化
+# 2. 價格走勢圖（加入完整訊號、收盤價、20MA 生命線 Hover）
 fig_price = px.line(
     recent_df,
     x="ShortDate",
@@ -253,6 +266,21 @@ fig_price = px.line(
     color="Sector",
     markers=True,
     template="plotly_dark",
+    hover_data={
+        "ShortDate": True,
+        "Norm_Price_Return": ":.2f",
+        "Close": ":.2f",
+        "MA20": ":.2f",
+        "Signal": True,
+        "Sector": False,
+    },
+    labels={
+        "Norm_Price_Return": "累積漲跌(%)",
+        "Close": "收盤價($)",
+        "MA20": "20MA生命線($)",
+        "Signal": "訊號",
+        "ShortDate": "日期",
+    },
 )
 fig_price.add_hline(
     y=0, line_dash="dash", line_color="#78909C", opacity=0.7
@@ -276,7 +304,7 @@ chart_price_html = fig_price.to_html(
     full_html=False, include_plotlyjs=False, config={"displayModeBar": False}
 )
 
-# 矩陣表生成
+# 3. 矩陣表生成
 matrix_dates = recent_df["Date"].drop_duplicates().tolist()
 matrix_short_dates = recent_df["ShortDate"].drop_duplicates().tolist()
 matrix_header = "".join([f"<th>{d}</th>" for d in matrix_short_dates])
@@ -374,7 +402,7 @@ full_html = f"""<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>美股資金輪動雷達</title>
-    <!-- 預載入 Plotly 庫，確保所有圖表正常顯示 -->
+    <!-- 預載入 Plotly 庫 -->
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
     <style>
         body {{
